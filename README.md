@@ -81,15 +81,13 @@ There are different types of thresholding methods commonly used in computer visi
 
     Global Thresholding
     Adaptive Thresholding
-    Otsu’s Thresholding
 
 Quick tip on when to use which type of thresholding :
 
-Global Thresholding: When the lighting is even and difference is clear.
+Global Thresholding: When the lighting is even and difference is clear. There is one threshold value throughout the image.
 
-Adaptive Thresholding: When the lighting is uneven.
+Adaptive Thresholding: When the lighting is uneven then the threshold value changes throughout the image.
 
-Otsu’s Thresholding: When in doubt.
 
 4. We are using the contours and grab contours functions. Why?
 
