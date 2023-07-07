@@ -1,6 +1,7 @@
 # IdentificationCardFraudDetection
 
 Introduction
+Medium article link : https://saineshnakra.medium.com/fake-id-card-detection-system-using-computer-vision-af3feea226fe
 
 This can be used by organizations to check the veracity of the Identification-Card. Currently companies manually check online but with this project we can automate the process and do it instantly.
 
