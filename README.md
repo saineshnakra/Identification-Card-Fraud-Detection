@@ -1,123 +1,101 @@
-# IdentificationCardFraudDetection
+# ID Document Tampering Visualization with OpenCV and SSIM
 
-Introduction
-Medium article link : https://saineshnakra.medium.com/fake-id-card-detection-system-using-computer-vision-af3feea226fe
+[![CI](https://github.com/saineshnakra/Identification-Card-Fraud-Detection/actions/workflows/ci.yml/badge.svg)](https://github.com/saineshnakra/Identification-Card-Fraud-Detection/actions/workflows/ci.yml)
+[![Python](https://img.shields.io/badge/Python-3.11%2B-3776ab?logo=python&logoColor=white)](https://www.python.org/)
 
-This can be used by organizations to check the veracity of the Identification-Card. Currently companies manually check online but with this project we can automate the process and do it instantly.
+An educational computer-vision baseline for comparing two aligned document images. It computes the Structural Similarity Index (SSIM), builds a pixel-level difference mask, finds changed regions with OpenCV contours, and saves annotated output images.
 
-Steps to perform:
+> **Important:** this is not an identity-verification or production fraud-detection system. An SSIM score is not a fraud probability. Real document authentication requires issuer validation, OCR and field checks, security-feature analysis, capture-quality controls, adversarial testing, and human review.
 
-1. Get images from User
+The project began as a Colab tutorial and is now packaged as a reproducible local command-line tool with tests and CI. The accompanying explanation is available in the [original Medium article](https://saineshnakra.medium.com/fake-id-card-detection-system-using-computer-vision-af3feea226fe).
 
-2. Check for size and format of the image
+## What it does
 
-3. Change the shape and size of image according to the original image
+- Loads two local image files; no document is uploaded to a third-party API
+- Normalizes the candidate image to the reference image dimensions
+- Computes SSIM on grayscale images
+- Converts structural differences into a binary mask
+- Filters tiny contours and draws bounding boxes around changed regions
+- Saves annotated reference, annotated candidate, difference, and threshold images
 
-4. Convert the image to grayscale
+## Install
 
-5. Find the similarity index of the images
+```bash
+git clone https://github.com/saineshnakra/Identification-Card-Fraud-Detection.git
+cd Identification-Card-Fraud-Detection
+python -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
+python -m pip install -r requirements.txt
+```
 
-6. Finding the threshold of the image
+## Run
 
-7. Finding contour and grab those contours using imutils.
+```bash
+python id_tamper_check.py reference.png candidate.png --output-dir comparison
+```
 
-8. Draw a bounding rectangle using these contours.
+Example output:
 
-9. Plot difference, threshold, original and tampered image.
+```text
+SSIM score: 0.8732
+Changed regions: 3
+Results saved to: comparison
+```
 
-10. Compare all the images and check the similarity score to decide
+The command creates:
 
-tampering
+- `reference_annotated.png`
+- `candidate_annotated.png`
+- `difference.png`
+- `threshold.png`
 
-Platform used:
+Use `--min-region-area-ratio` to control how aggressively tiny changed regions are ignored:
 
-Google Colab -> we will not require a GPU or TPU for this project.
-Link :
-https://colab.research.google.com/drive/1ulefSYeT6pChfEagXoN5CNJaSiyyw3FC?usp=sharing
+```bash
+python id_tamper_check.py reference.png candidate.png --min-region-area-ratio 0.002
+```
 
-Libraries used:
+## Use as a Python module
 
-1. from skimage.metrics we will import structural_similarity -> this will help us in finding the structural similarity score between two images.
+```python
+from pathlib import Path
 
-2. from imutils -> helps in grabbing the contours of the image
+from id_tamper_check import compare_documents, save_result
 
-3. cv2 -> for all computer vision requirements
+result = compare_documents(Path("reference.png"), Path("candidate.png"))
+print(result.score, result.regions)
+save_result(result, Path("comparison"))
+```
 
-4. from PIL import Image -> downloading and visualizing the image
+## How it works
 
-5. requests -> fetch data from urls
-Summary
+1. Read both images and convert them to RGB.
+2. Resize the candidate to the reference dimensions for pixel alignment.
+3. Convert both images to grayscale.
+4. Calculate SSIM and its per-pixel similarity map.
+5. Convert the similarity map into a difference image.
+6. Apply Otsu thresholding and find external contours.
+7. Discard regions below the configured area ratio and annotate the remainder.
 
-Finding out structural similarity of the images helped us in finding the difference or similarity in the shape of the images. Similarly, finding out the threshold and contours based on those threshold for the images converted into grayscale binary also helped us in shape analysis and recognition.
+## Limitations
 
-As, our SSIM is ~31.2% we can say that the image user provided is fake or tampered.
+- The images must depict the same document layout and be closely aligned.
+- Resizing does not correct rotation, perspective, glare, blur, compression, or lighting differences.
+- A low score can come from capture conditions rather than tampering.
+- A high score does not establish that a document is genuine.
+- The method does not validate names, numbers, barcodes, faces, signatures, or issuer records.
+- Do not commit real identity documents or other personal data to the repository.
 
-Finally we visualized the differences and similarities between the images using by displaying the images with contours, difference and threshold.
+Treat this as an explainable image-difference demo and a starting point for experimentation—not a KYC, compliance, or automated decision system.
 
-Computer Vision Concepts Used and F.A.Qs
+## Test
 
-1. Why are we converting the images to a grayscale format?
-Ans. This is because in image processing it is better to understand a grayscale image which only has one channel as compared to an rgb image(colored image) as it has three channels and therefore it is a bit tough to identify the important edges in a colored image
+```bash
+python -m pip install -r requirements-dev.txt
+ruff check .
+python -m unittest discover -s tests -v
+```
 
-2, We are using Structural similarity index. What is structural similarity index?
-Ans. Here, we are trying to find the similarity between the original and tampered image. The lower the SSIM score lower is the similarity. SSIM is a fantastic tool that allows us to evaluate the structural similarity between two images by considering various components.
+## Author
 
-When it comes to comparing images using SSIM, we take into account three key factors: luminance, contrast, and structure.
-
-Firstly, we consider luminance. SSIM evaluates the overall brightness or luminance of the images. It looks at the mean luminance and ensures that both images have similar intensity levels.
-
-Next up is contrast. SSIM measures the similarity of contrast between corresponding local regions of the images. It compares the local variations in intensity or color are preserved in the compared images basically comparing how the contrasts match up.
-
-Lastly, we have the structural comparison. SSIM evaluates the similarity of structural patterns or textures in the images. This helps us analyze the preservation of structure within the images.
-
-The SSIM metric combines these components to provide an overall assessment of the structural similarity between the two images. The SSIM index ranges from -1 to 1, with values closer to 1 informing us about a higher structural similarity. So, the closer the SSIM value is to 1, the higher the similarity in the structures of the images provided.
-
-3.We are using the threshold function. What does it do?
-Ans. The threshold function is a basic and commonly used image processing technique that converts a grayscale or color image into a binary image. It is used to segment the image, separating regions of interest from the background based on pixel intensity values.
-
-The threshold function takes an input image and a threshold value as parameters and produces an output binary image. The process involves comparing the intensity values of pixels in the input image with the threshold value and assigning a binary value (usually 0 or 255) to each pixel in the output image based on the result of the comparison.
-
-There are different types of thresholding methods commonly used in computer vision:
-
-    Global Thresholding
-    Adaptive Thresholding
-
-Quick tip on when to use which type of thresholding :
-
-Global Thresholding: When the lighting is even and difference is clear. There is one threshold value throughout the image.
-
-Adaptive Thresholding: When the lighting is uneven then the threshold value changes throughout the image.
-
-
-4. We are using the contours and grab contours functions. Why?
-
-Ans. Find contours works on binary images and retrieves the contours of the images. This contours are a useful tool to analyze tool when the purpose is shape analysis and recognition. Grab contours will grab the appropriate value of the contours
-
-Contours is one of the most important tools to use in OpenCV. You can use contours to detect shapes and also analyze it without using ML or deep learning.
-
-Uses of contours in computer vision:
-
-    Edge Detection
-    Shape Analysis
-    Object Detection
-    Image Segmentation
-    Visualizing and Rendering
-
-Note: Preprocessing is very important when using contours.
-
-5. What is a bounding rectangle and how is it used?
-
-Ans. Bounding rectangle(bounding box) tightly encloses an object or region of interest in an image or video frame. It is a common technique used for object detection, tracking, and various other computer vision tasks.
-
-The bounding rectangle is defined by four parameters: the coordinates of the top-left corner (x, y) and the width and height (w, h) of the rectangle. These parameters describe the position and size of the rectangle relative to the image or frame coordinate system.
-
-Uses of bounding rectangles:
-
-    Object Localization
-    Object Detection
-    Object Tracking
-    Region of Interest (ROI) Extraction
-    Data Augmentation
-    Evaluation Metrics
-
-We compute the bounding box of the contour and then draw the bounding box on both input images to represent and highlight where the two images are different .
+Built by [Sainesh Nakra](https://sainesh.com/).
