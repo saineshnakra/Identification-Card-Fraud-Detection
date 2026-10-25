@@ -25,13 +25,13 @@ git clone https://github.com/saineshnakra/Identification-Card-Fraud-Detection.gi
 cd Identification-Card-Fraud-Detection
 python -m venv .venv
 source .venv/bin/activate  # Windows: .venv\Scripts\activate
-python -m pip install -r requirements.txt
+python -m pip install -e .
 ```
 
 ## Run
 
 ```bash
-python id_tamper_check.py reference.png candidate.png --output-dir comparison
+id-tamper-check reference.png candidate.png --output-dir comparison
 ```
 
 Example output:
@@ -52,7 +52,7 @@ The command creates:
 Use `--min-region-area-ratio` to control how aggressively tiny changed regions are ignored:
 
 ```bash
-python id_tamper_check.py reference.png candidate.png --min-region-area-ratio 0.002
+id-tamper-check reference.png candidate.png --min-region-area-ratio 0.002
 ```
 
 ## Use as a Python module
@@ -91,9 +91,9 @@ Treat this as an explainable image-difference demo and a starting point for expe
 ## Test
 
 ```bash
-python -m pip install -r requirements-dev.txt
+python -m pip install -e ".[dev]"
 ruff check .
-python -m unittest discover -s tests -v
+pytest
 ```
 
 ## Author

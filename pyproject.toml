@@ -1,6 +1,77 @@
+[build-system]
+requires = ["hatchling>=1.24"]
+build-backend = "hatchling.build"
+
+[project]
+name = "id-tamper-check"
+dynamic = ["version"]
+description = "Detect and visualize tampering in ID card and document images with OpenCV and SSIM."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Sainesh Nakra" }]
+requires-python = ">=3.10"
+keywords = [
+    "id-card",
+    "document-forgery",
+    "tampering-detection",
+    "image-forensics",
+    "fraud-detection",
+    "kyc",
+    "ssim",
+    "opencv",
+    "computer-vision",
+    "image-comparison",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Education",
+    "Intended Audience :: Science/Research",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Image Recognition",
+    "Topic :: Security",
+    "Typing :: Typed",
+]
+dependencies = [
+    "numpy>=1.26,<3",
+    "opencv-python-headless>=4.10,<5",
+    "pillow>=10.1,<13",
+    "scikit-image>=0.24,<1",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.8,<1"]
+
+[project.scripts]
+id-tamper-check = "id_tamper_check.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/saineshnakra/Identification-Card-Fraud-Detection"
+Repository = "https://github.com/saineshnakra/Identification-Card-Fraud-Detection"
+Issues = "https://github.com/saineshnakra/Identification-Card-Fraud-Detection/issues"
+Changelog = "https://github.com/saineshnakra/Identification-Card-Fraud-Detection/blob/main/CHANGELOG.md"
+Article = "https://saineshnakra.medium.com/fake-id-card-detection-system-using-computer-vision-af3feea226fe"
+
+[tool.hatch.version]
+path = "src/id_tamper_check/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/id_tamper_check"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
 [tool.ruff]
 line-length = 110
-target-version = "py311"
+target-version = "py310"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
