@@ -55,6 +55,7 @@ id-tamper-check = "id_tamper_check.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/saineshnakra/Identification-Card-Fraud-Detection"
+"Try it online" = "https://colab.research.google.com/github/saineshnakra/Identification-Card-Fraud-Detection/blob/main/notebooks/quickstart.ipynb"
 Repository = "https://github.com/saineshnakra/Identification-Card-Fraud-Detection"
 Issues = "https://github.com/saineshnakra/Identification-Card-Fraud-Detection/issues"
 Changelog = "https://github.com/saineshnakra/Identification-Card-Fraud-Detection/blob/main/CHANGELOG.md"

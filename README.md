@@ -14,12 +14,23 @@
 </p>
 
 <p align="center">
+  <a href="https://colab.research.google.com/github/saineshnakra/Identification-Card-Fraud-Detection/blob/main/notebooks/quickstart.ipynb"><b>Try it in your browser</b></a> (Google Colab, no install)
+  ·
+  <a href="#quick-start">Quick start</a>
+  ·
+  <a href="#benchmark">Benchmark</a>
+  ·
+  <a href="https://github.com/saineshnakra/Identification-Card-Fraud-Detection"><b>Star on GitHub</b></a>
+</p>
+
+<p align="center">
   <img src="docs/assets/pipeline.jpg" alt="ID card tampering detection pipeline: reference card, tampered phone photo, automatic alignment, SSIM heatmap, and red boxes around the edited date of birth, document number and portrait" width="100%">
 </p>
 
 `id-tamper-check` compares a **trusted reference image** of a document with a **candidate image**, for example a
 phone photo taken at an angle. It aligns the two automatically, computes a per-pixel structural similarity map, and draws
-boxes around the regions that were changed. Everything runs locally: no API keys, no uploads, no GPU.
+boxes around the regions that were changed. Everything runs locally: no API keys, no uploads, no GPU. To try it without installing anything, open the
+[Colab quickstart](https://colab.research.google.com/github/saineshnakra/Identification-Card-Fraud-Detection/blob/main/notebooks/quickstart.ipynb).
 
 ```bash
 pip install git+https://github.com/saineshnakra/Identification-Card-Fraud-Detection.git
