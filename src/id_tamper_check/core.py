@@ -129,8 +129,12 @@ def compare_images(
     threshold = cv2.threshold(difference, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
     # Opening drops thin slivers along edges, which come from resampling and
     # slight misregistration rather than from edits.
-    threshold = cv2.morphologyEx(threshold, cv2.MORPH_OPEN, np.ones((5, 5), np.uint8))
-    contours = cv2.findContours(threshold.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0]
+    threshold = cv2.morphologyEx(threshold, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
+    # Merge nearby fragments (for example the characters of an edited field)
+    # into one region before boxing them.
+    grouping_size = max(3, round(min(height, width) * 0.02)) | 1
+    grouped = cv2.dilate(threshold, np.ones((grouping_size, grouping_size), np.uint8))
+    contours = cv2.findContours(grouped, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0]
 
     minimum_area = height * width * min_region_area_ratio
     regions = tuple(
