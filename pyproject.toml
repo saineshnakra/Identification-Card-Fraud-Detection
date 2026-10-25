@@ -41,7 +41,7 @@ classifiers = [
 ]
 dependencies = [
     "numpy>=1.26,<3",
-    "opencv-python-headless>=4.10,<5",
+    "opencv-python-headless>=4.10,<6",
     "pillow>=10.1,<13",
     "scikit-image>=0.24,<1",
 ]
