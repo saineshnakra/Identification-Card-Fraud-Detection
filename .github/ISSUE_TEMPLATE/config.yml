@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security or privacy concern
+    url: https://github.com/saineshnakra/Identification-Card-Fraud-Detection/security/policy
+    about: Please report these privately, not in a public issue.
+  - name: Question or idea
+    url: https://github.com/saineshnakra/Identification-Card-Fraud-Detection/discussions
+    about: Ask questions and share how you use the project.

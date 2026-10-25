@@ -1,0 +1,232 @@
+"""Core SSIM comparison for two document images."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, NamedTuple
+
+import cv2
+import numpy as np
+from PIL import Image, ImageOps
+from skimage.metrics import structural_similarity
+
+from .align import align_to_reference
+from .report import heatmap_overlay, render_report
+
+ANNOTATION_COLOR = (255, 0, 0)
+
+
+class Region(NamedTuple):
+    """Bounding box of a changed region, in reference-image pixel coordinates."""
+
+    x: int
+    y: int
+    width: int
+    height: int
+
+    @property
+    def area(self) -> int:
+        return self.width * self.height
+
+
+@dataclass(frozen=True)
+class ComparisonResult:
+    """Computed SSIM artifacts and the regions selected for annotation.
+
+    Annotated images are RGB arrays; ``difference`` and ``threshold`` are
+    single-channel ``uint8`` arrays where brighter means more different.
+    """
+
+    score: float
+    regions: tuple[Region, ...]
+    reference_annotated: np.ndarray
+    candidate_annotated: np.ndarray
+    difference: np.ndarray
+    threshold: np.ndarray
+    aligned: bool = False
+
+    @property
+    def changed_area_ratio(self) -> float:
+        """Fraction of the image covered by the thresholded difference mask."""
+        return float(np.count_nonzero(self.threshold)) / self.threshold.size
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return a JSON-serializable summary of the comparison."""
+        height, width = self.difference.shape[:2]
+        return {
+            "score": round(self.score, 6),
+            "aligned": self.aligned,
+            "changed_area_ratio": round(self.changed_area_ratio, 6),
+            "image_size": {"width": width, "height": height},
+            "regions": [
+                {
+                    **region._asdict(),
+                    "area": region.area,
+                    "mean_difference": round(float(self._region_pixels(region).mean()) / 255, 6),
+                }
+                for region in self.regions
+            ],
+        }
+
+    def _region_pixels(self, region: Region) -> np.ndarray:
+        return self.difference[region.y : region.y + region.height, region.x : region.x + region.width]
+
+
+def load_image(path: Path) -> np.ndarray:
+    """Load an image file as an RGB ``uint8`` array, honoring EXIF orientation."""
+    if not path.is_file():
+        raise FileNotFoundError(f"Image not found: {path}")
+
+    try:
+        with Image.open(path) as image:
+            return np.asarray(ImageOps.exif_transpose(image).convert("RGB"))
+    except (OSError, ValueError) as error:
+        raise ValueError(f"Could not decode image: {path}") from error
+
+
+def compare_images(
+    reference: np.ndarray,
+    candidate: np.ndarray,
+    min_region_area_ratio: float = 0.0005,
+    align: bool = False,
+    min_difference: float = 0.5,
+) -> ComparisonResult:
+    """Compare two RGB arrays and return explainable difference artifacts.
+
+    By default the candidate is resized to match the reference, which assumes
+    the two images are already framed the same way. Pass ``align=True`` to
+    register a handheld photo onto the reference first (see
+    :func:`id_tamper_check.align.align_to_reference`); this raises
+    :class:`id_tamper_check.align.AlignmentError` if registration fails.
+
+    Pixels are flagged when their local dissimilarity (``1 - SSIM``) exceeds
+    both Otsu's threshold and ``min_difference``. The floor stops Otsu from
+    splitting pure capture noise into "changes" when nothing was edited.
+    """
+    _validate_parameters(min_region_area_ratio, min_difference)
+    reference_rgb = _as_rgb(reference)
+    candidate_rgb = _as_rgb(candidate)
+    height, width = reference_rgb.shape[:2]
+    valid_mask = None
+    if align:
+        candidate_rgb, valid_mask, *_ = align_to_reference(reference_rgb, candidate_rgb)
+    else:
+        candidate_rgb = cv2.resize(candidate_rgb, (width, height), interpolation=cv2.INTER_AREA)
+
+    # A light blur suppresses sensor and JPEG noise without hiding real edits.
+    reference_gray = cv2.GaussianBlur(cv2.cvtColor(reference_rgb, cv2.COLOR_RGB2GRAY), (3, 3), 0)
+    candidate_gray = cv2.GaussianBlur(cv2.cvtColor(candidate_rgb, cv2.COLOR_RGB2GRAY), (3, 3), 0)
+    # Gaussian-weighted SSIM as defined by Wang et al. (2004).
+    score, similarity_map = structural_similarity(
+        reference_gray,
+        candidate_gray,
+        full=True,
+        data_range=255,
+        gaussian_weights=True,
+        sigma=1.5,
+        use_sample_covariance=False,
+    )
+
+    difference = np.clip((1.0 - similarity_map) * 255, 0, 255).astype(np.uint8)
+    if valid_mask is not None:
+        difference[~valid_mask] = 0
+        score = float(similarity_map[valid_mask].mean())
+    otsu_level = cv2.threshold(difference, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[0]
+    level = max(otsu_level, min_difference * 255)
+    threshold = cv2.threshold(difference, level, 255, cv2.THRESH_BINARY)[1]
+    # Opening drops thin slivers along edges, which come from resampling and
+    # slight misregistration rather than from edits.
+    threshold = cv2.morphologyEx(threshold, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
+    # Merge nearby fragments (for example the characters of an edited field)
+    # into one region before boxing them.
+    grouping_size = max(3, round(min(height, width) * 0.02)) | 1
+    grouped = cv2.dilate(threshold, np.ones((grouping_size, grouping_size), np.uint8))
+    contours = cv2.findContours(grouped, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0]
+
+    minimum_area = height * width * min_region_area_ratio
+    regions = tuple(
+        sorted(
+            (
+                Region(*cv2.boundingRect(contour))
+                for contour in contours
+                if cv2.contourArea(contour) >= minimum_area
+            ),
+            key=lambda region: region.area,
+            reverse=True,
+        )
+    )
+
+    reference_annotated = reference_rgb.copy()
+    candidate_annotated = candidate_rgb.copy()
+    for region in regions:
+        top_left = (region.x, region.y)
+        bottom_right = (region.x + region.width, region.y + region.height)
+        cv2.rectangle(reference_annotated, top_left, bottom_right, ANNOTATION_COLOR, 2)
+        cv2.rectangle(candidate_annotated, top_left, bottom_right, ANNOTATION_COLOR, 2)
+
+    return ComparisonResult(
+        score=float(score),
+        regions=regions,
+        reference_annotated=reference_annotated,
+        candidate_annotated=candidate_annotated,
+        difference=difference,
+        threshold=threshold,
+        aligned=align,
+    )
+
+
+def compare_documents(
+    reference_path: Path,
+    candidate_path: Path,
+    min_region_area_ratio: float = 0.0005,
+    align: bool = False,
+    min_difference: float = 0.5,
+) -> ComparisonResult:
+    """Load two image files and compare them with :func:`compare_images`."""
+    _validate_parameters(min_region_area_ratio, min_difference)
+    return compare_images(
+        load_image(Path(reference_path)),
+        load_image(Path(candidate_path)),
+        min_region_area_ratio=min_region_area_ratio,
+        align=align,
+        min_difference=min_difference,
+    )
+
+
+def save_result(result: ComparisonResult, output_dir: Path) -> None:
+    """Save comparison artifacts, raising if an image cannot be written."""
+    output_dir.mkdir(parents=True, exist_ok=True)
+    artifacts = {
+        "reference_annotated.png": cv2.cvtColor(result.reference_annotated, cv2.COLOR_RGB2BGR),
+        "candidate_annotated.png": cv2.cvtColor(result.candidate_annotated, cv2.COLOR_RGB2BGR),
+        "difference.png": result.difference,
+        "threshold.png": result.threshold,
+        "heatmap.png": cv2.cvtColor(heatmap_overlay(result), cv2.COLOR_RGB2BGR),
+        "report.png": cv2.cvtColor(render_report(result), cv2.COLOR_RGB2BGR),
+    }
+
+    for filename, image in artifacts.items():
+        destination = output_dir / filename
+        if not cv2.imwrite(str(destination), image):
+            raise OSError(f"Could not write image: {destination}")
+
+
+def _validate_parameters(min_region_area_ratio: float, min_difference: float) -> None:
+    if not 0 <= min_region_area_ratio < 1:
+        raise ValueError("min_region_area_ratio must be between 0 (inclusive) and 1 (exclusive).")
+    if not 0 <= min_difference < 1:
+        raise ValueError("min_difference must be between 0 (inclusive) and 1 (exclusive).")
+
+
+def _as_rgb(image: np.ndarray) -> np.ndarray:
+    image = np.asarray(image)
+    if image.dtype != np.uint8:
+        raise ValueError("Images must be uint8 arrays.")
+    if image.ndim == 2:
+        return cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
+    if image.ndim == 3 and image.shape[2] == 4:
+        return cv2.cvtColor(image, cv2.COLOR_RGBA2RGB)
+    if image.ndim == 3 and image.shape[2] == 3:
+        return np.ascontiguousarray(image)
+    raise ValueError(f"Unsupported image shape: {image.shape}")

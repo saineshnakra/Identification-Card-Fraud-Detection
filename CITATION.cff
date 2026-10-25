@@ -1,0 +1,44 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "id-tamper-check: Explainable ID card tampering detection with SSIM and OpenCV"
+abstract: >-
+  An open-source Python tool and library that aligns a candidate photo of an identity document to a trusted
+  reference, computes a structural similarity (SSIM) map, and highlights edited regions such as altered dates,
+  numbers, and portraits.
+type: software
+authors:
+  - given-names: Sainesh
+    family-names: Nakra
+    website: "https://sainesh.com/"
+repository-code: "https://github.com/saineshnakra/Identification-Card-Fraud-Detection"
+url: "https://github.com/saineshnakra/Identification-Card-Fraud-Detection"
+license: MIT
+version: 0.2.0
+keywords:
+  - document forgery detection
+  - ID card tampering
+  - image forensics
+  - structural similarity
+  - SSIM
+  - OpenCV
+  - computer vision
+  - KYC
+references:
+  - type: article
+    title: "Image quality assessment: from error visibility to structural similarity"
+    authors:
+      - family-names: Wang
+        given-names: Zhou
+      - family-names: Bovik
+        given-names: Alan C.
+      - family-names: Sheikh
+        given-names: Hamid R.
+      - family-names: Simoncelli
+        given-names: Eero P.
+    journal: "IEEE Transactions on Image Processing"
+    volume: 13
+    issue: 4
+    start: 600
+    end: 612
+    year: 2004
+    doi: "10.1109/TIP.2003.819861"

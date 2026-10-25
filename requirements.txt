@@ -1,4 +1,0 @@
-numpy>=1.26,<3
-opencv-python-headless>=4.10,<5
-pillow>=10,<13
-scikit-image>=0.24,<1

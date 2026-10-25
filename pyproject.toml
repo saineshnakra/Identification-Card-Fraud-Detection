@@ -1,6 +1,100 @@
+[build-system]
+requires = ["hatchling>=1.24", "hatch-fancy-pypi-readme>=24"]
+build-backend = "hatchling.build"
+
+[project]
+name = "id-tamper-check"
+dynamic = ["version", "readme"]
+description = "Detect and visualize tampering in ID card and document images with OpenCV and SSIM."
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Sainesh Nakra" }]
+requires-python = ">=3.10"
+keywords = [
+    "id-card",
+    "document-forgery",
+    "tampering-detection",
+    "image-forensics",
+    "fraud-detection",
+    "kyc",
+    "ssim",
+    "opencv",
+    "computer-vision",
+    "image-comparison",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Education",
+    "Intended Audience :: Science/Research",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Image Recognition",
+    "Topic :: Security",
+    "Typing :: Typed",
+]
+dependencies = [
+    "numpy>=1.26,<3",
+    "opencv-python-headless>=4.10,<5",
+    "pillow>=10.1,<13",
+    "scikit-image>=0.24,<1",
+]
+
+[project.optional-dependencies]
+dev = ["pre-commit>=3", "pytest>=8", "ruff>=0.8,<1"]
+web = ["gradio>=5,<7"]
+
+[project.scripts]
+id-tamper-check = "id_tamper_check.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/saineshnakra/Identification-Card-Fraud-Detection"
+Repository = "https://github.com/saineshnakra/Identification-Card-Fraud-Detection"
+Issues = "https://github.com/saineshnakra/Identification-Card-Fraud-Detection/issues"
+Changelog = "https://github.com/saineshnakra/Identification-Card-Fraud-Detection/blob/main/CHANGELOG.md"
+Article = "https://saineshnakra.medium.com/fake-id-card-detection-system-using-computer-vision-af3feea226fe"
+
+[tool.hatch.version]
+path = "src/id_tamper_check/__init__.py"
+
+# On PyPI, relative README links would break: point images at raw GitHub
+# content and other links at the repository.
+[tool.hatch.metadata.hooks.fancy-pypi-readme]
+content-type = "text/markdown"
+
+[[tool.hatch.metadata.hooks.fancy-pypi-readme.fragments]]
+path = "README.md"
+
+[[tool.hatch.metadata.hooks.fancy-pypi-readme.substitutions]]
+pattern = '(src|href)="(?!https?://|#)([^"]+)"'
+replacement = '\1="https://raw.githubusercontent.com/saineshnakra/Identification-Card-Fraud-Detection/main/\2"'
+
+[[tool.hatch.metadata.hooks.fancy-pypi-readme.substitutions]]
+pattern = '\]\((?!https?://|#)([^)]+\.(?:png|jpg|jpeg|gif|svg|webp))\)'
+replacement = '](https://raw.githubusercontent.com/saineshnakra/Identification-Card-Fraud-Detection/main/\1)'
+
+[[tool.hatch.metadata.hooks.fancy-pypi-readme.substitutions]]
+pattern = '\]\((?!https?://|#)([^)]+)\)'
+replacement = '](https://github.com/saineshnakra/Identification-Card-Fraud-Detection/blob/main/\1)'
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/id_tamper_check"]
+
+[tool.hatch.build.targets.sdist]
+include = ["/src", "/tests", "/README.md", "/LICENSE", "/CHANGELOG.md"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
 [tool.ruff]
 line-length = 110
-target-version = "py311"
+target-version = "py310"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]

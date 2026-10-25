@@ -1,0 +1,30 @@
+name: Deploy Hugging Face Space
+
+# Publishes demo/ to a Hugging Face Space on every push to main.
+# Setup: create a Gradio Space, then add the repository variable HF_SPACE
+# (for example "your-name/id-card-tampering-detection") and the secret
+# HF_TOKEN (a write token). The job is skipped until HF_SPACE is set.
+
+on:
+  push:
+    branches: [main]
+    paths: ["demo/**", "src/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    if: vars.HF_SPACE != ''
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install "huggingface_hub>=0.25"
+      - run: huggingface-cli upload "$HF_SPACE" demo . --repo-type=space --commit-message "Sync from GitHub ${GITHUB_SHA::7}"
+        env:
+          HF_SPACE: ${{ vars.HF_SPACE }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
