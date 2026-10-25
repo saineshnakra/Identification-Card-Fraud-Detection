@@ -1,12 +1,11 @@
 [build-system]
-requires = ["hatchling>=1.24"]
+requires = ["hatchling>=1.24", "hatch-fancy-pypi-readme>=24"]
 build-backend = "hatchling.build"
 
 [project]
 name = "id-tamper-check"
-dynamic = ["version"]
+dynamic = ["version", "readme"]
 description = "Detect and visualize tampering in ID card and document images with OpenCV and SSIM."
-readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
 authors = [{ name = "Sainesh Nakra" }]
@@ -63,6 +62,26 @@ Article = "https://saineshnakra.medium.com/fake-id-card-detection-system-using-c
 
 [tool.hatch.version]
 path = "src/id_tamper_check/__init__.py"
+
+# On PyPI, relative README links would break: point images at raw GitHub
+# content and other links at the repository.
+[tool.hatch.metadata.hooks.fancy-pypi-readme]
+content-type = "text/markdown"
+
+[[tool.hatch.metadata.hooks.fancy-pypi-readme.fragments]]
+path = "README.md"
+
+[[tool.hatch.metadata.hooks.fancy-pypi-readme.substitutions]]
+pattern = '(src|href)="(?!https?://|#)([^"]+)"'
+replacement = '\1="https://raw.githubusercontent.com/saineshnakra/Identification-Card-Fraud-Detection/main/\2"'
+
+[[tool.hatch.metadata.hooks.fancy-pypi-readme.substitutions]]
+pattern = '\]\((?!https?://|#)([^)]+\.(?:png|jpg|jpeg|gif|svg|webp))\)'
+replacement = '](https://raw.githubusercontent.com/saineshnakra/Identification-Card-Fraud-Detection/main/\1)'
+
+[[tool.hatch.metadata.hooks.fancy-pypi-readme.substitutions]]
+pattern = '\]\((?!https?://|#)([^)]+)\)'
+replacement = '](https://github.com/saineshnakra/Identification-Card-Fraud-Detection/blob/main/\1)'
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/id_tamper_check"]
