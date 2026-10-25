@@ -40,6 +40,38 @@ def main() -> None:
     result = compare_images(reference, photo, align=True)
     save(render_report(result), ASSETS / "demo-report.jpg", quality=88)
     save(pipeline_strip(reference, photo, result), ASSETS / "pipeline.jpg", quality=88)
+    save(social_preview(photo, result), ASSETS / "social-preview.png")
+
+
+def social_preview(photo, result) -> np.ndarray:
+    """1280x640 card for the repository's social preview setting."""
+    canvas = Image.new("RGB", (1280, 640), (17, 21, 31))
+    draw = ImageDraw.Draw(canvas)
+    draw.text(
+        (64, 70), "ID Card Tampering Detection", font=ImageFont.load_default(size=56), fill=(255, 255, 255)
+    )
+    draw.text(
+        (66, 148),
+        "Find edited fields in document photos with OpenCV + SSIM",
+        font=ImageFont.load_default(size=28),
+        fill=(160, 190, 230),
+    )
+    for index, (image, title) in enumerate(
+        ((photo, "Phone photo"), (result.candidate_annotated, "Flagged edits"))
+    ):
+        tile = Image.fromarray(image)
+        tile.thumbnail((560, 360))
+        left = 64 + index * 592
+        canvas.paste(tile, (left, 236 + (360 - tile.height) // 2))
+        draw.text((left, 606), title, font=ImageFont.load_default(size=22), fill=(200, 205, 215), anchor="lm")
+    draw.text(
+        (1216, 606),
+        "id-tamper-check",
+        font=ImageFont.load_default(size=22),
+        fill=(120, 130, 150),
+        anchor="rm",
+    )
+    return np.asarray(canvas)
 
 
 def pipeline_strip(reference, photo, result) -> np.ndarray:
