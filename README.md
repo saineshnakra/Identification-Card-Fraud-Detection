@@ -156,7 +156,7 @@ save_result(result, Path("comparison"))
 # From NumPy arrays (RGB, RGBA or grayscale uint8), e.g. frames from a camera or a web upload
 result = compare_images(reference_array, candidate_array, align=True, min_difference=0.4)
 report = render_report(result)  # RGB array, ready for PIL, matplotlib or Gradio
-summary = result.to_dict()      # JSON-serializable
+summary = result.to_dict()  # JSON-serializable
 ```
 
 Synthetic test data:
