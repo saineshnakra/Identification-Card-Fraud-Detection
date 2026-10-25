@@ -5,6 +5,7 @@ import pytest
 
 from id_tamper_check import __version__
 from id_tamper_check.cli import main
+from id_tamper_check.samples import specimen_pair
 
 
 @pytest.fixture
@@ -45,3 +46,18 @@ def test_module_entry_point_propagates_exit_code(tmp_path):
 
     assert completed.returncode == 2
     assert "Traceback" not in completed.stderr
+
+
+def test_align_flag_handles_a_simulated_photo(tmp_path, write_image, capsys):
+    reference, capture = specimen_pair(capture=True)
+    args = [str(write_image("ref.png", reference)), str(write_image("photo.png", capture))]
+
+    assert main([*args, "--output-dir", str(tmp_path / "out"), "--align"]) == 0
+    assert "Changed regions: 4" in capsys.readouterr().out
+
+
+def test_alignment_failure_is_reported(tmp_path, write_image, blank, capsys):
+    path = str(write_image("flat.png", blank))
+
+    assert main([path, path, "--output-dir", str(tmp_path / "out"), "--align"]) == 2
+    assert "feature" in capsys.readouterr().err

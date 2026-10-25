@@ -7,6 +7,7 @@ import sys
 from pathlib import Path
 
 from . import __version__
+from .align import AlignmentError
 from .core import compare_documents, save_result
 
 EXIT_OK = 0
@@ -32,6 +33,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=0.001,
         help="Ignore contours smaller than this fraction of the image area (default: 0.001)",
     )
+    parser.add_argument(
+        "--align",
+        action="store_true",
+        help="Register the candidate onto the reference first (for photos taken at an angle)",
+    )
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     return parser.parse_args(argv)
 
@@ -43,9 +49,10 @@ def main(argv: list[str] | None = None) -> int:
             args.reference,
             args.candidate,
             min_region_area_ratio=args.min_region_area_ratio,
+            align=args.align,
         )
         save_result(result, args.output_dir)
-    except (OSError, ValueError) as error:
+    except (AlignmentError, OSError, ValueError) as error:
         print(f"id-tamper-check: error: {error}", file=sys.stderr)
         return EXIT_ERROR
 
