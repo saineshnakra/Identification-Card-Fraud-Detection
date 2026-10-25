@@ -8,7 +8,7 @@ from typing import Any, NamedTuple
 
 import cv2
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageOps
 from skimage.metrics import structural_similarity
 
 ANNOTATION_COLOR = (255, 0, 0)
@@ -69,13 +69,13 @@ class ComparisonResult:
 
 
 def load_image(path: Path) -> np.ndarray:
-    """Load an image file as an RGB ``uint8`` array."""
+    """Load an image file as an RGB ``uint8`` array, honoring EXIF orientation."""
     if not path.is_file():
         raise FileNotFoundError(f"Image not found: {path}")
 
     try:
         with Image.open(path) as image:
-            return np.asarray(image.convert("RGB"))
+            return np.asarray(ImageOps.exif_transpose(image).convert("RGB"))
     except (OSError, ValueError) as error:
         raise ValueError(f"Could not decode image: {path}") from error
 

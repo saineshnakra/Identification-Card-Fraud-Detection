@@ -2,8 +2,9 @@ import json
 
 import numpy as np
 import pytest
+from PIL import Image
 
-from id_tamper_check import Region, compare_documents, compare_images, save_result
+from id_tamper_check import Region, compare_documents, compare_images, load_image, save_result
 
 
 def test_identical_images_score_one_and_have_no_regions(blank):
@@ -87,3 +88,13 @@ def test_documents_round_trip_and_outputs_are_saved(tmp_path, write_image, blank
 
     for name in ("reference_annotated.png", "candidate_annotated.png", "difference.png", "threshold.png"):
         assert (tmp_path / "out" / name).is_file()
+
+
+def test_exif_orientation_is_applied(tmp_path):
+    path = tmp_path / "rotated.jpg"
+    image = Image.new("RGB", (40, 20), (200, 200, 200))
+    exif = image.getexif()
+    exif[0x0112] = 6  # Orientation: rotate 90 degrees clockwise on display
+    image.save(path, exif=exif)
+
+    assert load_image(path).shape[:2] == (40, 20)
