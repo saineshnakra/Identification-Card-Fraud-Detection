@@ -86,7 +86,14 @@ def test_documents_round_trip_and_outputs_are_saved(tmp_path, write_image, blank
     result = compare_documents(write_image("ref.png", blank), write_image("cand.png", edited))
     save_result(result, tmp_path / "out")
 
-    for name in ("reference_annotated.png", "candidate_annotated.png", "difference.png", "threshold.png"):
+    for name in (
+        "reference_annotated.png",
+        "candidate_annotated.png",
+        "difference.png",
+        "threshold.png",
+        "heatmap.png",
+        "report.png",
+    ):
         assert (tmp_path / "out" / name).is_file()
 
 

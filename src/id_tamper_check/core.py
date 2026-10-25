@@ -12,6 +12,7 @@ from PIL import Image, ImageOps
 from skimage.metrics import structural_similarity
 
 from .align import align_to_reference
+from .report import heatmap_overlay, render_report
 
 ANNOTATION_COLOR = (255, 0, 0)
 
@@ -187,6 +188,8 @@ def save_result(result: ComparisonResult, output_dir: Path) -> None:
         "candidate_annotated.png": cv2.cvtColor(result.candidate_annotated, cv2.COLOR_RGB2BGR),
         "difference.png": result.difference,
         "threshold.png": result.threshold,
+        "heatmap.png": cv2.cvtColor(heatmap_overlay(result), cv2.COLOR_RGB2BGR),
+        "report.png": cv2.cvtColor(render_report(result), cv2.COLOR_RGB2BGR),
     }
 
     for filename, image in artifacts.items():
