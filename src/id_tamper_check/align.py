@@ -94,7 +94,7 @@ def _refine_with_ecc(
     template = cv2.resize(reference_gray, size, interpolation=cv2.INTER_AREA).astype(np.float32)
     coarse = cv2.warpPerspective(candidate_gray, to_small @ homography, size, flags=cv2.INTER_LINEAR)
     correction = np.eye(3, dtype=np.float32)
-    criteria = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 100, 1e-6)
+    criteria = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 50, 1e-4)
     try:
         _, correction = cv2.findTransformECC(
             template, coarse.astype(np.float32), correction, cv2.MOTION_HOMOGRAPHY, criteria, None, 5
