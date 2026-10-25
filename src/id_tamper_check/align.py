@@ -76,6 +76,10 @@ def align_to_reference(
     margin = max(4, round(0.01 * min(height, width)))
     valid_mask[:margin, :] = valid_mask[-margin:, :] = False
     valid_mask[:, :margin] = valid_mask[:, -margin:] = False
+    if valid_mask.mean() < 0.25:
+        raise AlignmentError(
+            "The aligned candidate covers too little of the reference; is it the same document?"
+        )
     return Alignment(warped, valid_mask, homography, inliers)
 
 
