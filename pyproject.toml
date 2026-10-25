@@ -67,6 +67,9 @@ path = "src/id_tamper_check/__init__.py"
 [tool.hatch.build.targets.wheel]
 packages = ["src/id_tamper_check"]
 
+[tool.hatch.build.targets.sdist]
+include = ["/src", "/tests", "/README.md", "/LICENSE", "/CHANGELOG.md"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 
