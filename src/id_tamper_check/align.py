@@ -27,12 +27,16 @@ def align_to_reference(
     max_features: int = 5000,
     ratio: float = 0.75,
     min_inliers: int = 15,
+    refine: bool = True,
 ) -> Alignment:
     """Warp ``candidate`` onto ``reference`` using ORB features and a RANSAC homography.
 
     This corrects rotation, scale, translation and perspective from a handheld
-    capture of a flat document. It does not correct glare, blur or lighting.
-    Both inputs must be RGB ``uint8`` arrays.
+    capture of a flat document. With ``refine=True`` the homography is then
+    polished to sub-pixel accuracy with ECC image alignment, which removes
+    the faint outlines a slightly-off feature match leaves in the SSIM map.
+    It does not correct glare, blur or lighting. Both inputs must be RGB
+    ``uint8`` arrays.
     """
     reference_gray = cv2.cvtColor(reference, cv2.COLOR_RGB2GRAY)
     candidate_gray = cv2.cvtColor(candidate, cv2.COLOR_RGB2GRAY)
@@ -57,6 +61,8 @@ def align_to_reference(
         raise AlignmentError(f"Only {inliers} consistent feature matches; need at least {min_inliers}.")
 
     height, width = reference.shape[:2]
+    if refine:
+        homography = _refine_with_ecc(reference_gray, candidate_gray, homography)
     warped = cv2.warpPerspective(candidate, homography, (width, height), flags=cv2.INTER_LINEAR)
     coverage = cv2.warpPerspective(
         np.full(candidate.shape[:2], 255, dtype=np.uint8),
@@ -71,3 +77,32 @@ def align_to_reference(
     valid_mask[:margin, :] = valid_mask[-margin:, :] = False
     valid_mask[:, :margin] = valid_mask[:, -margin:] = False
     return Alignment(warped, valid_mask, homography, inliers)
+
+
+def _refine_with_ecc(
+    reference_gray: np.ndarray,
+    candidate_gray: np.ndarray,
+    homography: np.ndarray,
+    max_side: int = 1000,
+) -> np.ndarray:
+    """Polish ``homography`` with ECC maximization, falling back to it on failure."""
+    height, width = reference_gray.shape
+    scale = min(1.0, max_side / max(height, width))
+    to_small = np.diag([scale, scale, 1.0])
+    size = (round(width * scale), round(height * scale))
+
+    template = cv2.resize(reference_gray, size, interpolation=cv2.INTER_AREA).astype(np.float32)
+    coarse = cv2.warpPerspective(candidate_gray, to_small @ homography, size, flags=cv2.INTER_LINEAR)
+    correction = np.eye(3, dtype=np.float32)
+    criteria = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 100, 1e-6)
+    try:
+        _, correction = cv2.findTransformECC(
+            template, coarse.astype(np.float32), correction, cv2.MOTION_HOMOGRAPHY, criteria, None, 5
+        )
+    except cv2.error:
+        return homography
+
+    # ECC maps template coordinates into the coarse warp; invert it and lift
+    # it back to full resolution before composing with the feature homography.
+    full_correction = np.linalg.inv(to_small) @ np.linalg.inv(correction.astype(np.float64)) @ to_small
+    return full_correction @ homography
