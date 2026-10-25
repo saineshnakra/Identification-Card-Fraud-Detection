@@ -47,8 +47,14 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--min-region-area-ratio",
         type=float,
-        default=0.001,
-        help="Ignore contours smaller than this fraction of the image area (default: 0.001)",
+        default=0.0005,
+        help="Ignore contours smaller than this fraction of the image area (default: 0.0005)",
+    )
+    parser.add_argument(
+        "--min-difference",
+        type=float,
+        default=0.5,
+        help="Flag only pixels whose local 1 - SSIM exceeds this; lower is more sensitive (default: 0.5)",
     )
     parser.add_argument(
         "--align",
@@ -75,13 +81,14 @@ def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     try:
         if args.demo:
-            result = _run_demo(args.output_dir, args.min_region_area_ratio)
+            result = _run_demo(args.output_dir, args.min_region_area_ratio, args.min_difference)
         else:
             result = compare_documents(
                 args.reference,
                 args.candidate,
                 min_region_area_ratio=args.min_region_area_ratio,
                 align=args.align,
+                min_difference=args.min_difference,
             )
         save_result(result, args.output_dir)
     except (AlignmentError, OSError, ValueError) as error:
@@ -101,9 +108,15 @@ def main(argv: list[str] | None = None) -> int:
     return EXIT_OK
 
 
-def _run_demo(output_dir: Path, min_region_area_ratio: float) -> ComparisonResult:
+def _run_demo(output_dir: Path, min_region_area_ratio: float, min_difference: float) -> ComparisonResult:
     reference, candidate = specimen_pair(capture=True)
     output_dir.mkdir(parents=True, exist_ok=True)
     for name, image in (("demo_reference.png", reference), ("demo_candidate.png", candidate)):
         Image.fromarray(image).save(output_dir / name)
-    return compare_images(reference, candidate, min_region_area_ratio=min_region_area_ratio, align=True)
+    return compare_images(
+        reference,
+        candidate,
+        min_region_area_ratio=min_region_area_ratio,
+        align=True,
+        min_difference=min_difference,
+    )

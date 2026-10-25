@@ -88,8 +88,9 @@ def load_image(path: Path) -> np.ndarray:
 def compare_images(
     reference: np.ndarray,
     candidate: np.ndarray,
-    min_region_area_ratio: float = 0.001,
+    min_region_area_ratio: float = 0.0005,
     align: bool = False,
+    min_difference: float = 0.5,
 ) -> ComparisonResult:
     """Compare two RGB arrays and return explainable difference artifacts.
 
@@ -98,8 +99,12 @@ def compare_images(
     register a handheld photo onto the reference first (see
     :func:`id_tamper_check.align.align_to_reference`); this raises
     :class:`id_tamper_check.align.AlignmentError` if registration fails.
+
+    Pixels are flagged when their local dissimilarity (``1 - SSIM``) exceeds
+    both Otsu's threshold and ``min_difference``. The floor stops Otsu from
+    splitting pure capture noise into "changes" when nothing was edited.
     """
-    _validate_area_ratio(min_region_area_ratio)
+    _validate_parameters(min_region_area_ratio, min_difference)
     reference_rgb = _as_rgb(reference)
     candidate_rgb = _as_rgb(candidate)
     height, width = reference_rgb.shape[:2]
@@ -109,8 +114,9 @@ def compare_images(
     else:
         candidate_rgb = cv2.resize(candidate_rgb, (width, height), interpolation=cv2.INTER_AREA)
 
-    reference_gray = cv2.cvtColor(reference_rgb, cv2.COLOR_RGB2GRAY)
-    candidate_gray = cv2.cvtColor(candidate_rgb, cv2.COLOR_RGB2GRAY)
+    # A light blur suppresses sensor and JPEG noise without hiding real edits.
+    reference_gray = cv2.GaussianBlur(cv2.cvtColor(reference_rgb, cv2.COLOR_RGB2GRAY), (3, 3), 0)
+    candidate_gray = cv2.GaussianBlur(cv2.cvtColor(candidate_rgb, cv2.COLOR_RGB2GRAY), (3, 3), 0)
     # Gaussian-weighted SSIM as defined by Wang et al. (2004).
     score, similarity_map = structural_similarity(
         reference_gray,
@@ -126,7 +132,9 @@ def compare_images(
     if valid_mask is not None:
         difference[~valid_mask] = 0
         score = float(similarity_map[valid_mask].mean())
-    threshold = cv2.threshold(difference, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
+    otsu_level = cv2.threshold(difference, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[0]
+    level = max(otsu_level, min_difference * 255)
+    threshold = cv2.threshold(difference, level, 255, cv2.THRESH_BINARY)[1]
     # Opening drops thin slivers along edges, which come from resampling and
     # slight misregistration rather than from edits.
     threshold = cv2.morphologyEx(threshold, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
@@ -171,16 +179,18 @@ def compare_images(
 def compare_documents(
     reference_path: Path,
     candidate_path: Path,
-    min_region_area_ratio: float = 0.001,
+    min_region_area_ratio: float = 0.0005,
     align: bool = False,
+    min_difference: float = 0.5,
 ) -> ComparisonResult:
     """Load two image files and compare them with :func:`compare_images`."""
-    _validate_area_ratio(min_region_area_ratio)
+    _validate_parameters(min_region_area_ratio, min_difference)
     return compare_images(
         load_image(Path(reference_path)),
         load_image(Path(candidate_path)),
         min_region_area_ratio=min_region_area_ratio,
         align=align,
+        min_difference=min_difference,
     )
 
 
@@ -202,9 +212,11 @@ def save_result(result: ComparisonResult, output_dir: Path) -> None:
             raise OSError(f"Could not write image: {destination}")
 
 
-def _validate_area_ratio(min_region_area_ratio: float) -> None:
+def _validate_parameters(min_region_area_ratio: float, min_difference: float) -> None:
     if not 0 <= min_region_area_ratio < 1:
         raise ValueError("min_region_area_ratio must be between 0 (inclusive) and 1 (exclusive).")
+    if not 0 <= min_difference < 1:
+        raise ValueError("min_difference must be between 0 (inclusive) and 1 (exclusive).")
 
 
 def _as_rgb(image: np.ndarray) -> np.ndarray:

@@ -62,6 +62,20 @@ def test_invalid_area_ratio_is_rejected(tmp_path, ratio):
         compare_documents(tmp_path / "a.png", tmp_path / "b.png", min_region_area_ratio=ratio)
 
 
+@pytest.mark.parametrize("floor", [-0.1, 1.0])
+def test_invalid_min_difference_is_rejected(blank, floor):
+    with pytest.raises(ValueError, match="min_difference"):
+        compare_images(blank, blank, min_difference=floor)
+
+
+def test_faint_noise_is_not_flagged(blank):
+    noisy = np.clip(blank + np.random.default_rng(0).normal(0, 4, blank.shape), 0, 255).astype(np.uint8)
+    result = compare_images(blank, noisy)
+
+    assert result.regions == ()
+    assert not result.threshold.any()
+
+
 def test_missing_file_raises(tmp_path):
     with pytest.raises(FileNotFoundError):
         compare_documents(tmp_path / "missing.png", tmp_path / "missing.png")

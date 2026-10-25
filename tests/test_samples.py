@@ -1,5 +1,7 @@
+import pytest
+
 from id_tamper_check import compare_images
-from id_tamper_check.samples import CARD_SIZE, render_specimen, specimen_pair
+from id_tamper_check.samples import CARD_SIZE, render_specimen, simulate_capture, specimen_pair
 
 
 def test_specimen_is_deterministic_and_card_sized():
@@ -37,3 +39,14 @@ def test_simulated_capture_needs_alignment():
     aligned = compare_images(reference, capture, align=True)
     assert aligned.score > compare_images(reference, capture).score
     assert len(aligned.regions) >= 3
+
+
+@pytest.mark.parametrize(("angle", "seed"), [(5.0, 1), (-12.0, 3), (18.0, 5)])
+def test_genuine_photo_has_no_false_positives(angle, seed):
+    reference = render_specimen()
+    photo = simulate_capture(reference, angle=angle, seed=seed)
+
+    result = compare_images(reference, photo, align=True)
+
+    assert result.regions == ()
+    assert result.score > 0.98
