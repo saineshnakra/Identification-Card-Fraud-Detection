@@ -1,3 +1,4 @@
+import json
 import subprocess
 import sys
 
@@ -61,3 +62,19 @@ def test_alignment_failure_is_reported(tmp_path, write_image, blank, capsys):
 
     assert main([path, path, "--output-dir", str(tmp_path / "out"), "--align"]) == 2
     assert "feature" in capsys.readouterr().err
+
+
+def test_json_output(tmp_path, pair, capsys):
+    assert main([*map(str, pair), "--output-dir", str(tmp_path / "out"), "--json"]) == 0
+
+    summary = json.loads(capsys.readouterr().out)
+    assert summary["score"] < 1
+    assert summary["regions"]
+    assert summary["output_dir"] == str(tmp_path / "out")
+
+
+@pytest.mark.parametrize(("threshold", "expected"), [(0.5, 0), (0.999, 1)])
+def test_fail_under_sets_exit_code(tmp_path, pair, threshold, expected):
+    args = [*map(str, pair), "--output-dir", str(tmp_path / "out"), "--fail-under", str(threshold)]
+
+    assert main(args) == expected

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from pathlib import Path
 
@@ -11,6 +12,7 @@ from .align import AlignmentError
 from .core import compare_documents, save_result
 
 EXIT_OK = 0
+EXIT_BELOW_THRESHOLD = 1
 EXIT_ERROR = 2
 
 
@@ -38,6 +40,13 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="Register the candidate onto the reference first (for photos taken at an angle)",
     )
+    parser.add_argument("--json", action="store_true", help="Print a machine-readable JSON summary")
+    parser.add_argument(
+        "--fail-under",
+        type=float,
+        metavar="SCORE",
+        help="Exit with status 1 when the SSIM score is below SCORE (useful in scripts and CI)",
+    )
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     return parser.parse_args(argv)
 
@@ -56,7 +65,13 @@ def main(argv: list[str] | None = None) -> int:
         print(f"id-tamper-check: error: {error}", file=sys.stderr)
         return EXIT_ERROR
 
-    print(f"SSIM score: {result.score:.4f}")
-    print(f"Changed regions: {len(result.regions)}")
-    print(f"Results saved to: {args.output_dir}")
+    if args.json:
+        print(json.dumps({**result.to_dict(), "output_dir": str(args.output_dir)}, indent=2))
+    else:
+        print(f"SSIM score: {result.score:.4f}")
+        print(f"Changed regions: {len(result.regions)}")
+        print(f"Results saved to: {args.output_dir}")
+
+    if args.fail_under is not None and result.score < args.fail_under:
+        return EXIT_BELOW_THRESHOLD
     return EXIT_OK
