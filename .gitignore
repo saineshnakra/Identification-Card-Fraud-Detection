@@ -1,11 +1,26 @@
+# Python
 __pycache__/
 *.py[cod]
 .venv/
-.pytest_cache/
-.ruff_cache/
 build/
 dist/
 *.egg-info/
-.DS_Store
+
+# Tooling
+.pytest_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+.gradio/
+
+# Outputs from running the tool
 comparison/
+demo-output/
+
+# Never commit secrets or identity documents
 *.env
+.env
+private/
+
+# OS
+.DS_Store
+Thumbs.db
