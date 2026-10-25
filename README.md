@@ -1,4 +1,4 @@
-<h1 align="center">🪪 ID Card Tampering Detection</h1>
+<h1 align="center">ID Card Tampering Detection</h1>
 
 <p align="center">
   <b>Find edited fields in photos of ID cards and documents: altered dates, swapped portraits, changed numbers.</b><br>
