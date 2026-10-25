@@ -48,7 +48,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8", "ruff>=0.8,<1"]
+dev = ["pre-commit>=3", "pytest>=8", "ruff>=0.8,<1"]
 web = ["gradio>=5,<7"]
 
 [project.scripts]
