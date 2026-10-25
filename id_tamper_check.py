@@ -68,9 +68,7 @@ def compare_documents(
 
     minimum_area = height * width * min_region_area_ratio
     regions = tuple(
-        cv2.boundingRect(contour)
-        for contour in contours
-        if cv2.contourArea(contour) >= minimum_area
+        cv2.boundingRect(contour) for contour in contours if cv2.contourArea(contour) >= minimum_area
     )
 
     reference_annotated = cv2.cvtColor(reference_rgb, cv2.COLOR_RGB2BGR)
