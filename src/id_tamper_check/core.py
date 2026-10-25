@@ -98,15 +98,22 @@ def compare_images(
 
     reference_gray = cv2.cvtColor(reference_rgb, cv2.COLOR_RGB2GRAY)
     candidate_gray = cv2.cvtColor(candidate_rgb, cv2.COLOR_RGB2GRAY)
+    # Gaussian-weighted SSIM as defined by Wang et al. (2004).
     score, similarity_map = structural_similarity(
         reference_gray,
         candidate_gray,
         full=True,
         data_range=255,
+        gaussian_weights=True,
+        sigma=1.5,
+        use_sample_covariance=False,
     )
 
     difference = np.clip((1.0 - similarity_map) * 255, 0, 255).astype(np.uint8)
     threshold = cv2.threshold(difference, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
+    # Opening drops thin slivers along edges, which come from resampling and
+    # slight misregistration rather than from edits.
+    threshold = cv2.morphologyEx(threshold, cv2.MORPH_OPEN, np.ones((5, 5), np.uint8))
     contours = cv2.findContours(threshold.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0]
 
     minimum_area = height * width * min_region_area_ratio
