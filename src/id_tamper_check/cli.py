@@ -3,9 +3,14 @@
 from __future__ import annotations
 
 import argparse
+import sys
 from pathlib import Path
 
+from . import __version__
 from .core import compare_documents, save_result
+
+EXIT_OK = 0
+EXIT_ERROR = 2
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -27,17 +32,24 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=0.001,
         help="Ignore contours smaller than this fraction of the image area (default: 0.001)",
     )
+    parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     return parser.parse_args(argv)
 
 
-def main(argv: list[str] | None = None) -> None:
+def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
-    result = compare_documents(
-        args.reference,
-        args.candidate,
-        min_region_area_ratio=args.min_region_area_ratio,
-    )
-    save_result(result, args.output_dir)
+    try:
+        result = compare_documents(
+            args.reference,
+            args.candidate,
+            min_region_area_ratio=args.min_region_area_ratio,
+        )
+        save_result(result, args.output_dir)
+    except (OSError, ValueError) as error:
+        print(f"id-tamper-check: error: {error}", file=sys.stderr)
+        return EXIT_ERROR
+
     print(f"SSIM score: {result.score:.4f}")
     print(f"Changed regions: {len(result.regions)}")
     print(f"Results saved to: {args.output_dir}")
+    return EXIT_OK
