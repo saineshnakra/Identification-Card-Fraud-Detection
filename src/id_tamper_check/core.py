@@ -11,6 +11,8 @@ import numpy as np
 from PIL import Image, ImageOps
 from skimage.metrics import structural_similarity
 
+from .align import align_to_reference
+
 ANNOTATION_COLOR = (255, 0, 0)
 
 
@@ -41,6 +43,7 @@ class ComparisonResult:
     candidate_annotated: np.ndarray
     difference: np.ndarray
     threshold: np.ndarray
+    aligned: bool = False
 
     @property
     def changed_area_ratio(self) -> float:
@@ -52,6 +55,7 @@ class ComparisonResult:
         height, width = self.difference.shape[:2]
         return {
             "score": round(self.score, 6),
+            "aligned": self.aligned,
             "changed_area_ratio": round(self.changed_area_ratio, 6),
             "image_size": {"width": width, "height": height},
             "regions": [
@@ -84,17 +88,25 @@ def compare_images(
     reference: np.ndarray,
     candidate: np.ndarray,
     min_region_area_ratio: float = 0.001,
+    align: bool = False,
 ) -> ComparisonResult:
     """Compare two RGB arrays and return explainable difference artifacts.
 
-    The candidate is resized to match the reference. This normalizes dimensions
-    but does not solve rotation, perspective, or capture-condition differences.
+    By default the candidate is resized to match the reference, which assumes
+    the two images are already framed the same way. Pass ``align=True`` to
+    register a handheld photo onto the reference first (see
+    :func:`id_tamper_check.align.align_to_reference`); this raises
+    :class:`id_tamper_check.align.AlignmentError` if registration fails.
     """
     _validate_area_ratio(min_region_area_ratio)
     reference_rgb = _as_rgb(reference)
     candidate_rgb = _as_rgb(candidate)
     height, width = reference_rgb.shape[:2]
-    candidate_rgb = cv2.resize(candidate_rgb, (width, height), interpolation=cv2.INTER_AREA)
+    valid_mask = None
+    if align:
+        candidate_rgb, valid_mask, *_ = align_to_reference(reference_rgb, candidate_rgb)
+    else:
+        candidate_rgb = cv2.resize(candidate_rgb, (width, height), interpolation=cv2.INTER_AREA)
 
     reference_gray = cv2.cvtColor(reference_rgb, cv2.COLOR_RGB2GRAY)
     candidate_gray = cv2.cvtColor(candidate_rgb, cv2.COLOR_RGB2GRAY)
@@ -110,6 +122,9 @@ def compare_images(
     )
 
     difference = np.clip((1.0 - similarity_map) * 255, 0, 255).astype(np.uint8)
+    if valid_mask is not None:
+        difference[~valid_mask] = 0
+        score = float(similarity_map[valid_mask].mean())
     threshold = cv2.threshold(difference, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
     # Opening drops thin slivers along edges, which come from resampling and
     # slight misregistration rather than from edits.
@@ -144,6 +159,7 @@ def compare_images(
         candidate_annotated=candidate_annotated,
         difference=difference,
         threshold=threshold,
+        aligned=align,
     )
 
 
@@ -151,6 +167,7 @@ def compare_documents(
     reference_path: Path,
     candidate_path: Path,
     min_region_area_ratio: float = 0.001,
+    align: bool = False,
 ) -> ComparisonResult:
     """Load two image files and compare them with :func:`compare_images`."""
     _validate_area_ratio(min_region_area_ratio)
@@ -158,6 +175,7 @@ def compare_documents(
         load_image(Path(reference_path)),
         load_image(Path(candidate_path)),
         min_region_area_ratio=min_region_area_ratio,
+        align=align,
     )
 
 
