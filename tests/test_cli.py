@@ -78,3 +78,22 @@ def test_fail_under_sets_exit_code(tmp_path, pair, threshold, expected):
     args = [*map(str, pair), "--output-dir", str(tmp_path / "out"), "--fail-under", str(threshold)]
 
     assert main(args) == expected
+
+
+def test_demo_runs_without_inputs(tmp_path, capsys):
+    out = tmp_path / "demo"
+    assert main(["--demo", "--output-dir", str(out), "--json"]) == 0
+
+    summary = json.loads(capsys.readouterr().out)
+    assert summary["aligned"] is True
+    assert len(summary["regions"]) >= 3
+    assert (out / "demo_candidate.png").is_file()
+    assert (out / "report.png").is_file()
+
+
+@pytest.mark.parametrize("argv", [[], ["only-one.png"], ["--demo", "a.png", "b.png"]])
+def test_invalid_positional_combinations_are_rejected(argv):
+    with pytest.raises(SystemExit) as exit_info:
+        main(argv)
+
+    assert exit_info.value.code == 2
